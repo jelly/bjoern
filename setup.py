@@ -2,14 +2,13 @@ import os
 import glob
 from setuptools import setup, Extension
 
-SOURCE_FILES = [os.path.join('http-parser', 'http_parser.c')] + \
-               sorted(glob.glob(os.path.join('bjoern', '*.c')))
+SOURCE_FILES = sorted(glob.glob(os.path.join('bjoern', '*.c')))
 
 bjoern_extension = Extension(
     '_bjoern',
     sources       = SOURCE_FILES,
-    libraries     = ['ev'],
-    include_dirs  = ['http-parser', '/usr/include/libev'],
+    libraries     = ['ev', 'http_parser'],
+    include_dirs  = ['/usr/include/http-parser', '/usr/include/libev'],
     define_macros = [('WANT_SENDFILE', '1'),
                      ('WANT_SIGINT_HANDLING', '1')],
     extra_compile_args = ['-std=c99', '-fno-strict-aliasing', '-fcommon',
