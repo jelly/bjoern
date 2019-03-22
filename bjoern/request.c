@@ -12,6 +12,7 @@ static PyObject *IO_module;
 
 Request* Request_new(ServerInfo* server_info, int client_fd, const char* client_addr)
 {
+  printf("new request\n");
   Request* request = malloc(sizeof(Request));
 #ifdef DEBUG
   static unsigned long request_id = 0;
@@ -117,6 +118,7 @@ on_message_begin(http_parser* parser)
 static int
 on_path(http_parser* parser, const char* path, size_t len)
 {
+  printf("PATH: %s\n", path);
   if(!(len = unquote_url_inplace((char*)path, len)))
     return 1;
   _set_or_append_header(REQUEST->headers, _PATH_INFO, path, len);
@@ -133,6 +135,7 @@ on_query_string(http_parser* parser, const char* query, size_t len)
 static int
 on_header_field(http_parser* parser, const char* field, size_t len)
 {
+  printf("ON HEADER FIELD %s\n", field);
   if(PARSER->last_call_was_header_value) {
     /* We are starting a new header */
     Py_XDECREF(PARSER->field);
@@ -176,6 +179,7 @@ on_header_field(http_parser* parser, const char* field, size_t len)
 static int
 on_header_value(http_parser* parser, const char* value, size_t len)
 {
+  printf("ON HEADER VALUE: %s\n", value);
   PARSER->last_call_was_header_value = true;
   if(!PARSER->invalid_header) {
     /* Set header, or append data to header if this is not the first call */
@@ -189,6 +193,7 @@ on_body(http_parser* parser, const char* data, const size_t len)
 {
   PyObject *body;
 
+  printf("ON BODY VALUE: %s\n", data);
   body = PyDict_GetItem(REQUEST->headers, _wsgi_input);
   if (body == NULL) {
     if(!parser->content_length) {
@@ -261,10 +266,14 @@ PyDict_ReplaceKey(PyObject* dict, PyObject* old_key, PyObject* new_key)
 }
 
 
-static http_parser_settings
-parser_settings = {
-  on_message_begin, on_path, on_query_string, NULL, NULL, on_header_field,
-  on_header_value, NULL, on_body, on_message_complete
+static http_parser_settings parser_settings = {
+  .on_message_begin = on_message_begin,
+  .on_url = on_path, /* renamed to on_url */
+  .on_header_field = on_header_field,
+  .on_header_value = on_header_value,
+  .on_body = on_body,
+  .on_message_complete = on_message_complete,
+   /* on_query_string => removed in 53adfacad1c16ec7da7de4a0aee03c2d70f19618 */
 };
 
 void _initialize_request_module(ServerInfo* server_info)
